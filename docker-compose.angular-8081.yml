@@ -1,0 +1,8 @@
+# Override for Angular UI: use backend on port 8081 (when main backend is published on 8081).
+# Usage from project root:
+#   docker compose -f docker-compose.yml -f dspace/src/main/docker-compose/docker-compose-angular.yml -f docker-compose.angular-8081.yml up -d
+# Then open http://localhost:4000
+services:
+  dspace-angular:
+    environment:
+      DSPACE_REST_PORT: "8081"

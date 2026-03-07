@@ -1,0 +1,61 @@
+services:
+  dspacedb:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: dspace
+      POSTGRES_USER: dspace
+      POSTGRES_PASSWORD: dspace
+    volumes:
+      - dspace_pgdata:/var/lib/postgresql/data
+      - ./scripts/init-pgcrypto.sql:/docker-entrypoint-initdb.d/01-pgcrypto.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dspace -d dspace"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  solr:
+    image: solr:9.3
+    container_name: dspace-solr
+    environment:
+      SOLR_UID: 8983
+      SOLR_GID: 8983
+    ports:
+      - "8983:8983"
+    volumes:
+      - solr_data:/var/solr
+    command: solr -f -force
+    restart: unless-stopped
+
+  dspace:
+    image: dspace/dspace:dspace-7_x
+    entrypoint: ["/bin/bash", "/entrypoint-dspace.sh"]
+    command: ["catalina.sh", "run"]
+    environment:
+      - DSPACE_HOME=/usr/local/tomcat/dspace
+      - dspace__P__dir=/usr/local/tomcat/dspace
+      - DB_USERNAME=dspace
+      - DB_PASSWORD=dspace
+      - DB_URL=jdbc:postgresql://dspacedb:5432/dspace
+      # Override db.url so Hibernate/Spring use dspacedb, not localhost
+      - db__P__url=jdbc:postgresql://dspacedb:5432/dspace
+      - SOLR_URL=http://solr:8983/solr/search
+      - solr__P__server=http://solr:8983/solr
+      - DB_HOST=dspacedb
+      - DB_PORT=5432
+    volumes:
+      - ./scripts/entrypoint-dspace.sh:/entrypoint-dspace.sh:ro
+    depends_on:
+      dspacedb:
+        condition: service_healthy
+      solr:
+        condition: service_started
+    ports:
+      - "8080:8080"
+
+volumes:
+  dspace_pgdata:
+  solr_data:

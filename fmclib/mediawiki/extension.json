@@ -1,0 +1,29 @@
+{
+  "name": "FMCRepository",
+  "version": "1.0.0",
+  "author": ["FMC"],
+  "url": "",
+  "descriptionmsg": "fmcrepo-desc",
+  "license-name": "MIT",
+  "type": "specialpage",
+  "MessagesDirs": {
+    "FMCRepository": [
+      "i18n"
+    ]
+  },
+  "SpecialPageAliases": {
+    "FMCRepository": "FMCRepository.alias.php"
+  },
+  "SpecialPages": {
+    "FMCRepository": "MediaWiki\\Extension\\FMCRepository\\SpecialFMCRepository"
+  },
+  "AutoloadNamespaces": {
+    "MediaWiki\\Extension\\FMCRepository\\": "includes/"
+  },
+  "config": {
+    "FMCRepositoryAPIUrl": {
+      "value": "http://host.docker.internal:5001"
+    }
+  },
+  "manifest_version": 2
+}
