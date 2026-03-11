@@ -1,16 +1,26 @@
-# Solr for Render with proper port binding
+# Solr for Render with proper port binding and DSpace schemas
 FROM solr:8.11
 
 # Set environment variables for Render
 ENV PORT=8983
 ENV SOLR_PORT=8983
 
-# Start Solr in background and create the 4 required DSpace cores
+USER root
+# Install python3 for the health check dummy server in solr-entrypoint.sh
+RUN apt-get update && apt-get install -y python3 curl && rm -rf /var/lib/apt/lists/*
+
+# Copy DSpace Solr configurations
+COPY dspace/solr /opt/solr/server/solr/configsets/dspace
+RUN chown -R solr:solr /opt/solr/server/solr/configsets/dspace
+
+USER solr
+
+# Start Solr in background and create the 4 required DSpace cores with correct schemas
 RUN solr start -p 8983 && \
-    solr create_core -c search && \
-    solr create_core -c statistics && \
-    solr create_core -c authority && \
-    solr create_core -c oai && \
+    solr create_core -c search -d /opt/solr/server/solr/configsets/dspace/search && \
+    solr create_core -c statistics -d /opt/solr/server/solr/configsets/dspace/statistics && \
+    solr create_core -c authority -d /opt/solr/server/solr/configsets/dspace/authority && \
+    solr create_core -c oai -d /opt/solr/server/solr/configsets/dspace/oai && \
     solr stop
 
 # Copy entrypoint script and make it executable
