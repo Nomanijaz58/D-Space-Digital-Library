@@ -5,9 +5,12 @@ FROM solr:8.11
 ENV PORT=8983
 ENV SOLR_PORT=8983
 
-# Start Solr in background and create core, then stop for proper startup
+# Start Solr in background and create the 4 required DSpace cores
 RUN solr start -p 8983 && \
-    solr create_core -c dspace && \
+    solr create_core -c search && \
+    solr create_core -c statistics && \
+    solr create_core -c authority && \
+    solr create_core -c oai && \
     solr stop
 
 # Expose Solr port
