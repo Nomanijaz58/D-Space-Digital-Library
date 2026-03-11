@@ -117,7 +117,20 @@ echo "Running DSpace database migration (MUST succeed)..."
 # Add -v for verbose output if needed, but the main goal is to see it finish
 /dspace/bin/dspace database migrate || { echo "ERROR: Database migration failed. See logs above."; kill $JWEB_PID || true; exit 1; }
 
-echo "Database migration finished. Force-killing dummy web server to release port..."
+echo "Database migration finished."
+
+# Auto-create admin if DSPACE_ADMIN_EMAIL is set
+if [ ! -z "$DSPACE_ADMIN_EMAIL" ] && [ ! -z "$DSPACE_ADMIN_PASSWORD" ]; then
+    echo "Creating DSpace admin user: $DSPACE_ADMIN_EMAIL"
+    /dspace/bin/dspace create-administrator \
+        -e "$DSPACE_ADMIN_EMAIL" \
+        -f "Admin" \
+        -l "User" \
+        -c "en" \
+        -p "$DSPACE_ADMIN_PASSWORD" && echo "Admin user created successfully!" || echo "Admin user may already exist, continuing..."
+fi
+
+echo "Force-killing dummy web server to release port..."
 kill -9 $JWEB_PID || true
 pkill -9 -f jwebserver || true
 sleep 2
