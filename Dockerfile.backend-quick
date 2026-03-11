@@ -1,0 +1,39 @@
+# Quick Mock DSpace Backend for Render Free Tier
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Create simple mock API server with CORS support
+RUN echo 'const express = require("express");' > server.js && \
+    echo 'const cors = require("cors");' >> server.js && \
+    echo 'const app = express();' >> server.js && \
+    echo 'const port = process.env.PORT || 8080;' >> server.js && \
+    echo 'app.use(cors());' >> server.js && \
+    echo 'app.use(express.json());' >> server.js && \
+    echo 'app.get("/", (req, res) => {' >> server.js && \
+    echo '  res.json({ message: "DSpace Mock Backend API", endpoints: ["/server/api/health", "/server/api/core/collections", "/server/api/discover/search"] });' >> server.js && \
+    echo '});' >> server.js && \
+    echo 'app.get("/server/api", (req, res) => {' >> server.js && \
+    echo '  res.json({ _links: { self: { href: "/server/api" }, collections: { href: "/server/api/core/collections" }, items: { href: "/server/api/discover/search" } } });' >> server.js && \
+    echo '});' >> server.js && \
+    echo 'app.get("/server/api/health", (req, res) => {' >> server.js && \
+    echo '  res.json({ status: "OK", timestamp: new Date().toISOString() });' >> server.js && \
+    echo '});' >> server.js && \
+    echo 'app.get("/server/api/core/collections", (req, res) => {' >> server.js && \
+    echo '  res.json({ _embedded: { collections: [{ id: "1", name: "Sample Collection" }] }, _links: { self: { href: "/server/api/core/collections" } } });' >> server.js && \
+    echo '});' >> server.js && \
+    echo 'app.get("/server/api/discover/search", (req, res) => {' >> server.js && \
+    echo '  res.json({ _embedded: { items: [{ id: "1", name: "Sample Item" }] }, _links: { self: { href: "/server/api/discover/search" } } });' >> server.js && \
+    echo '});' >> server.js && \
+    echo 'app.listen(port, "0.0.0.0", () => {' >> server.js && \
+    echo '  console.log(`Mock DSpace API running on port ${port}`);' >> server.js && \
+    echo '});' >> server.js
+
+# Install express and cors
+RUN npm install express cors
+
+# Expose port
+EXPOSE 8080
+
+# Start server
+CMD ["node", "server.js"]

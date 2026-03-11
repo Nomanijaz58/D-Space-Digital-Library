@@ -1,0 +1,16 @@
+{
+	"fmcrepo-desc": "Search and display items from the FMC/DSpace repository via the adapter API.",
+	"fmcrepo-search-placeholder": "Search the repository...",
+	"fmcrepo-search-button": "Search",
+	"fmcrepo-results-title": "Results for \"$1\"",
+	"fmcrepo-no-results": "No results found.",
+	"fmcrepo-error-api": "The repository service is temporarily unavailable. Please try again later.",
+	"fmcrepo-error-timeout": "The request timed out. Please try again.",
+	"fmcrepo-error-invalid": "Invalid response from the repository.",
+	"fmcrepo-view-table": "Table",
+	"fmcrepo-view-cards": "Cards",
+	"fmcrepo-item-title": "Title",
+	"fmcrepo-item-author": "Author",
+	"fmcrepo-item-link": "View",
+	"fmcrepo-item-download": "Download"
+}

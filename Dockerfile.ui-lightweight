@@ -1,0 +1,11 @@
+# Lightweight DSpace UI for Free Tier
+FROM nginx:alpine
+
+# Create a simple HTML page that calls your backend
+RUN echo '<!DOCTYPE html><html><head><title>DSpace UI Demo</title><style>body { font-family: Arial, sans-serif; margin: 40px; } .card { border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 8px; } .status { color: green; } .error { color: red; } button { padding: 10px 20px; margin: 5px; }</style></head><body><h1>DSpace Digital Library</h1><div class="card"><h2>System Status</h2><p>Backend: <span id="backend-status" class="status">Checking...</span></p><p>FMC Adapter: <a href="https://d-space-digital-library.onrender.com/">Available</a></p></div><div class="card"><h2>Collections</h2><div id="collections">Loading...</div><button onclick="loadCollections()">Refresh Collections</button></div><div class="card"><h2>Search Items</h2><div id="items">Loading...</div><button onclick="searchItems()">Search Items</button></div><script>const API_BASE = "https://d-space-backend.onrender.com/server/api"; async function checkBackend() { try { const response = await fetch(`${API_BASE}/health`); const data = await response.json(); document.getElementById("backend-status").innerHTML = "✅ " + data.status; } catch (error) { document.getElementById("backend-status").innerHTML = "❌ Offline"; document.getElementById("backend-status").className = "error"; } } async function loadCollections() { try { const response = await fetch(`${API_BASE}/core/collections`); const data = await response.json(); const collections = data._embedded?.collections || []; document.getElementById("collections").innerHTML = collections.map(c => "<p>📁 " + c.name + "</p>").join(""); } catch (error) { document.getElementById("collections").innerHTML = "Error loading collections"; } } async function searchItems() { try { const response = await fetch(`${API_BASE}/discover/search`); const data = await response.json(); const items = data._embedded?.items || []; document.getElementById("items").innerHTML = items.map(i => "<p>📄 " + i.name + "</p>").join(""); } catch (error) { document.getElementById("items").innerHTML = "Error loading items"; } } checkBackend(); loadCollections(); searchItems();</script></body></html>' > /usr/share/nginx/html/index.html
+
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,17 @@
+# Solr for Render with proper port binding
+FROM solr:8.11
+
+# Set environment variables for Render
+ENV PORT=8983
+ENV SOLR_PORT=8983
+
+# Start Solr in background and create core, then stop for proper startup
+RUN solr start -p 8983 && \
+    solr create_core -c dspace && \
+    solr stop
+
+# Expose Solr port
+EXPOSE 8983
+
+# Start Solr with explicit shell interpolation and 0.0.0.0 binding
+CMD sh -c "exec solr -f -p \"\${PORT:-8983}\" -h 0.0.0.0"

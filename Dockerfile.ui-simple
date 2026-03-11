@@ -1,0 +1,24 @@
+# DSpace Angular UI connected to your backend
+FROM docker.io/dspace/dspace-angular:latest-dist
+
+# Override environment to bind to all interfaces
+ENV DSPACE_UI_HOST=0.0.0.0
+# We use the Render dynamic PORT, fallback to 4000
+ENV DSPACE_UI_PORT=${PORT:-4000}
+ENV DSPACE_UI_SSL=false
+ENV DSPACE_UI_NAMESPACE=/
+
+# Connect to YOUR backend (not demo.dspace.org)
+ENV DSPACE_REST_SSL=true
+ENV DSPACE_REST_HOST=d-space-backend-h3m6.onrender.com
+ENV DSPACE_REST_PORT=443
+ENV DSPACE_REST_NAMESPACE=/server
+
+# Override the start script to force binding to 0.0.0.0 and dynamically use $PORT
+# We must limit PM2 instances to 1 and restrict Node memory, otherwise Render's free tier (512MB) will crash since it detects too many CPU cores.
+ENV NODE_OPTIONS="--max_old_space_size=384"
+RUN sed -i 's/"instances": "max"/"instances": 1/g' /app/dspace-ui.json && \
+    echo '#!/bin/sh\nexec npm run serve:ssr -- --host 0.0.0.0 --port ${PORT:-4000}' > /app/start-dspace && \
+    chmod +x /app/start-dspace
+
+CMD ["/app/start-dspace"]
