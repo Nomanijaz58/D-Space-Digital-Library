@@ -23,10 +23,11 @@ echo "Starting real Solr in background..."
 SOLR_TEMP_PORT=8984
 solr -p "$SOLR_TEMP_PORT"
 
-echo "Waiting for Solr to be ready on port $SOLR_TEMP_PORT..."
-until curl -s "http://localhost:$SOLR_TEMP_PORT/solr/admin/info/system" | grep -q "OK"; do
-  echo "Solr is still initializing..."
-  sleep 5
+echo "Wait for Solr to be ready on port $SOLR_TEMP_PORT..."
+# Check for a 200 OK response from any valid Solr endpoint
+until [ "$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$SOLR_TEMP_PORT/solr/admin/info/system")" == "200" ]; do
+  echo "Solr is still initializing (waiting for cores to load)..."
+  sleep 10
 done
 
 echo "Solr is ready! Swapping dummy server for real Solr..."
