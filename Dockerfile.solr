@@ -13,8 +13,14 @@ RUN solr start -p 8983 && \
     solr create_core -c oai && \
     solr stop
 
+# Copy entrypoint script and make it executable
+COPY solr-entrypoint.sh /opt/solr/bin/solr-entrypoint.sh
+USER root
+RUN chmod +x /opt/solr/bin/solr-entrypoint.sh
+USER solr
+
 # Expose Solr port
 EXPOSE 8983
 
-# Start Solr with explicit shell interpolation and 0.0.0.0 binding
-CMD sh -c "exec solr -f -p \"\${PORT:-8983}\" -h 0.0.0.0"
+# Use the robust entrypoint script to survive Render startup checks
+CMD ["/opt/solr/bin/solr-entrypoint.sh"]
