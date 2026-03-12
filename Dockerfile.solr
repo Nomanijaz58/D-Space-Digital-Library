@@ -6,20 +6,32 @@ ENV PORT=8983
 ENV SOLR_PORT=8983
 
 USER root
-# Install curl for troubleshooting (python3 no longer needed for dummy server)
+# Install curl for troubleshooting
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Pre-create Solr core directories in the standard data path
-RUN mkdir -p /var/solr/data/search/conf \
-             /var/solr/data/statistics/conf \
-             /var/solr/data/authority/conf \
-             /var/solr/data/oai/conf
+# Pre-create Solr core directories and lib folders
+RUN mkdir -p /var/solr/data/search/conf /var/solr/data/search/lib \
+             /var/solr/data/statistics/conf /var/solr/data/statistics/lib \
+             /var/solr/data/authority/conf /var/solr/data/authority/lib \
+             /var/solr/data/oai/conf /var/solr/data/oai/lib
 
-# Copy DSpace Solr configurations directly into the core directories
+# Copy DSpace Solr configuration files
 COPY dspace/solr/search/conf/ /var/solr/data/search/conf/
 COPY dspace/solr/statistics/conf/ /var/solr/data/statistics/conf/
 COPY dspace/solr/authority/conf/ /var/solr/data/authority/conf/
 COPY dspace/solr/oai/conf/ /var/solr/data/oai/conf/
+
+# The DSpace schema requires ICU analysis plugins (e.g. ICUFoldingFilterFactory).
+# These are in /opt/solr/contrib/analysis-extras/lib/ in the base image.
+# We copy them into each core's lib directory so they are loaded on startup.
+RUN find /opt/solr/contrib/analysis-extras/lib/ -name "lucene-analyzers-icu-*.jar" -exec cp {} /var/solr/data/search/lib/ \; && \
+    find /opt/solr/contrib/analysis-extras/lib/ -name "lucene-analyzers-icu-*.jar" -exec cp {} /var/solr/data/statistics/lib/ \; && \
+    find /opt/solr/contrib/analysis-extras/lib/ -name "lucene-analyzers-icu-*.jar" -exec cp {} /var/solr/data/authority/lib/ \; && \
+    find /opt/solr/contrib/analysis-extras/lib/ -name "lucene-analyzers-icu-*.jar" -exec cp {} /var/solr/data/oai/lib/ \; && \
+    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /var/solr/data/search/lib/ \; && \
+    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /var/solr/data/statistics/lib/ \; && \
+    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /var/solr/data/authority/lib/ \; && \
+    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /var/solr/data/oai/lib/ \;
 
 # Create core.properties files to tell Solr these cores exist
 RUN echo "name=search" > /var/solr/data/search/core.properties && \
@@ -27,19 +39,17 @@ RUN echo "name=search" > /var/solr/data/search/core.properties && \
     echo "name=authority" > /var/solr/data/authority/core.properties && \
     echo "name=oai" > /var/solr/data/oai/core.properties
 
-# Ensure Solr user owns the data
+# Ensure Solr user owns all data
 RUN chown -R solr:solr /var/solr/data
 
 USER solr
 
-# Copy entrypoint script and make it executable
+# Copy and prepare the entrypoint script
 COPY solr-entrypoint.sh /opt/solr/bin/solr-entrypoint.sh
 USER root
 RUN chmod +x /opt/solr/bin/solr-entrypoint.sh
 USER solr
 
-# Expose Solr port
 EXPOSE 8983
 
-# Use the robust entrypoint script to survive Render startup checks
 CMD ["/opt/solr/bin/solr-entrypoint.sh"]
