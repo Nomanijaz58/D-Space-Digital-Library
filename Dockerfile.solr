@@ -32,12 +32,12 @@ COPY dspace/solr/oai/conf/ /opt/solr/core-templates/oai/conf/
 # 2. /opt/solr/core-templates/*/lib/ (Core-specific lib folders in template)
 # 3. /opt/solr/server/solr-webapp/webapp/WEB-INF/lib/ (Global Solr classpath)
 
-RUN find /opt/solr/contrib/analysis-extras/lib/ -name "*.jar" -exec cp {} /opt/solr/modules/analysis-extras/lib/ \; && \
-    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /opt/solr/modules/analysis-extras/lib/ \;
+RUN wget -qO /opt/solr/modules/analysis-extras/lib/icu4j-68.2.jar "https://repo1.maven.org/maven2/com/ibm/icu/icu4j/68.2/icu4j-68.2.jar" && \
+    wget -qO /opt/solr/modules/analysis-extras/lib/lucene-analyzers-icu-8.11.4.jar "https://repo1.maven.org/maven2/org/apache/lucene/lucene-analyzers-icu/8.11.4/lucene-analyzers-icu-8.11.4.jar" && \
+    wget -qO /opt/solr/modules/analysis-extras/lib/solr-analysis-extras-8.11.4.jar "https://repo1.maven.org/maven2/org/apache/solr/solr-analysis-extras/8.11.4/solr-analysis-extras-8.11.4.jar"
 
 # Handle 'analysis' vs 'analyzers' naming mismatch for DSpace regex
-RUN cd /opt/solr/modules/analysis-extras/lib/ && \
-    for f in lucene-analyzers-icu-*.jar; do cp "$f" "${f/analyzers/analysis}"; done || true
+RUN cp /opt/solr/modules/analysis-extras/lib/lucene-analyzers-icu-8.11.4.jar /opt/solr/modules/analysis-extras/lib/lucene-analysis-icu-8.11.4.jar
 
 # Copy to core-specific lib folders in templates
 RUN cp /opt/solr/modules/analysis-extras/lib/*.jar /opt/solr/core-templates/search/lib/ && \
