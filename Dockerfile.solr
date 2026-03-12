@@ -13,24 +13,23 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # We create this path and populate it to satisfy the <lib> tags.
 RUN mkdir -p /opt/solr/modules/analysis-extras/lib/
 
-# Pre-create Solr core directories and core-specific lib folders for redundancy
-RUN mkdir -p /var/solr/data/search/conf /var/solr/data/search/lib \
-             /var/solr/data/statistics/conf /var/solr/data/statistics/lib \
-             /var/solr/data/authority/conf /var/solr/data/authority/lib \
-             /var/solr/data/oai/conf /var/solr/data/oai/lib
+# Pre-create Solr core templates in a non-volume path
+# This survives Render persistent disk mounts which shadow /var/solr/data
+RUN mkdir -p /opt/solr/core-templates/search/conf /opt/solr/core-templates/search/lib \
+             /opt/solr/core-templates/statistics/conf /opt/solr/core-templates/statistics/lib \
+             /opt/solr/core-templates/authority/conf /opt/solr/core-templates/authority/lib \
+             /opt/solr/core-templates/oai/conf /opt/solr/core-templates/oai/lib
 
-# Copy DSpace Solr configuration files
-COPY dspace/solr/search/conf/ /var/solr/data/search/conf/
-COPY dspace/solr/statistics/conf/ /var/solr/data/statistics/conf/
-COPY dspace/solr/authority/conf/ /var/solr/data/authority/conf/
-COPY dspace/solr/oai/conf/ /var/solr/data/oai/conf/
+# Copy DSpace Solr configuration files to templates
+COPY dspace/solr/search/conf/ /opt/solr/core-templates/search/conf/
+COPY dspace/solr/statistics/conf/ /opt/solr/core-templates/statistics/conf/
+COPY dspace/solr/authority/conf/ /opt/solr/core-templates/authority/conf/
+COPY dspace/solr/oai/conf/ /opt/solr/core-templates/oai/conf/
 
-# Collect all ICU and analysis-extras jars into the path expected by solrconfig.xml
-# Search in contrib/analysis-extras/lib (for lucene-icu and icu4j) and dist/ (for solr-analysis-extras)
 # Collect all ICU and analysis-extras jars. 
 # We copy them to THREE places for absolute certainty:
 # 1. /opt/solr/modules/analysis-extras/lib/ (Expected by DSpace <lib> tags)
-# 2. /var/solr/data/*/lib/ (Core-specific lib folders)
+# 2. /opt/solr/core-templates/*/lib/ (Core-specific lib folders in template)
 # 3. /opt/solr/server/solr-webapp/webapp/WEB-INF/lib/ (Global Solr classpath)
 
 RUN find /opt/solr/contrib/analysis-extras/lib/ -name "*.jar" -exec cp {} /opt/solr/modules/analysis-extras/lib/ \; && \
@@ -40,23 +39,24 @@ RUN find /opt/solr/contrib/analysis-extras/lib/ -name "*.jar" -exec cp {} /opt/s
 RUN cd /opt/solr/modules/analysis-extras/lib/ && \
     for f in lucene-analyzers-icu-*.jar; do cp "$f" "${f/analyzers/analysis}"; done || true
 
-# Copy to core-specific lib folders
-RUN cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/search/lib/ && \
-    cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/statistics/lib/ && \
-    cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/authority/lib/ && \
-    cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/oai/lib/
+# Copy to core-specific lib folders in templates
+RUN cp /opt/solr/modules/analysis-extras/lib/*.jar /opt/solr/core-templates/search/lib/ && \
+    cp /opt/solr/modules/analysis-extras/lib/*.jar /opt/solr/core-templates/statistics/lib/ && \
+    cp /opt/solr/modules/analysis-extras/lib/*.jar /opt/solr/core-templates/authority/lib/ && \
+    cp /opt/solr/modules/analysis-extras/lib/*.jar /opt/solr/core-templates/oai/lib/
 
 # Copy to global webapp lib folder (Brute-force fix for ClassNotFoundException)
 RUN cp /opt/solr/modules/analysis-extras/lib/*.jar /opt/solr/server/solr-webapp/webapp/WEB-INF/lib/
 
-# Create core.properties files to tell Solr these cores exist
-RUN echo "name=search" > /var/solr/data/search/core.properties && \
-    echo "name=statistics" > /var/solr/data/statistics/core.properties && \
-    echo "name=authority" > /var/solr/data/authority/core.properties && \
-    echo "name=oai" > /var/solr/data/oai/core.properties
+# Create core.properties files in templates
+RUN echo "name=search" > /opt/solr/core-templates/search/core.properties && \
+    echo "name=statistics" > /opt/solr/core-templates/statistics/core.properties && \
+    echo "name=authority" > /opt/solr/core-templates/authority/core.properties && \
+    echo "name=oai" > /opt/solr/core-templates/oai/core.properties
 
-# Ensure Solr user owns all data, modules, and the webapp lib additions
+# Ensure Solr user owns all data, templates, modules, and the webapp lib additions
 RUN chown -R solr:solr /var/solr/data && \
+    chown -R solr:solr /opt/solr/core-templates && \
     chown -R solr:solr /opt/solr/modules && \
     chown solr:solr /opt/solr/server/solr-webapp/webapp/WEB-INF/lib/*.jar
 
