@@ -30,6 +30,11 @@ COPY dspace/solr/oai/conf/ /var/solr/data/oai/conf/
 RUN find /opt/solr/contrib/analysis-extras/lib/ -name "*.jar" -exec cp {} /opt/solr/modules/analysis-extras/lib/ \; && \
     find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /opt/solr/modules/analysis-extras/lib/ \;
 
+# Fix the lucene-analysis vs lucene-analyzers name mismatch to satisfy DSpace regex:
+# regex='lucene-analysis-icu-.*\.jar'
+RUN cd /opt/solr/modules/analysis-extras/lib/ && \
+    for f in lucene-analyzers-icu-*.jar; do cp "$f" "${f/analyzers/analysis}"; done || true
+
 # Also copy them into each core's lib directory just in case
 RUN cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/search/lib/ && \
     cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/statistics/lib/ && \
