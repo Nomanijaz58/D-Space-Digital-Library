@@ -6,35 +6,31 @@ ENV PORT=8983
 ENV SOLR_PORT=8983
 
 USER root
-# Install python3 for the health check dummy server in solr-entrypoint.sh
+# Install python3 for the health check dummy server and curl for troubleshooting
 RUN apt-get update && apt-get install -y python3 curl && rm -rf /var/lib/apt/lists/*
 
-# Copy DSpace Solr configurations into named configsets
-# We create a configset directory for each core
-RUN mkdir -p /opt/solr/server/solr/configsets/search/conf \
-             /opt/solr/server/solr/configsets/statistics/conf \
-             /opt/solr/server/solr/configsets/authority/conf \
-             /opt/solr/server/solr/configsets/oai/conf
+# Pre-create Solr core directories in the standard data path
+RUN mkdir -p /var/solr/data/search/conf \
+             /var/solr/data/statistics/conf \
+             /var/solr/data/authority/conf \
+             /var/solr/data/oai/conf
 
-COPY dspace/solr/search/conf/ /opt/solr/server/solr/configsets/search/conf/
-COPY dspace/solr/statistics/conf/ /opt/solr/server/solr/configsets/statistics/conf/
-COPY dspace/solr/authority/conf/ /opt/solr/server/solr/configsets/authority/conf/
-COPY dspace/solr/oai/conf/ /opt/solr/server/solr/configsets/oai/conf/
+# Copy DSpace Solr configurations directly into the core directories
+COPY dspace/solr/search/conf/ /var/solr/data/search/conf/
+COPY dspace/solr/statistics/conf/ /var/solr/data/statistics/conf/
+COPY dspace/solr/authority/conf/ /var/solr/data/authority/conf/
+COPY dspace/solr/oai/conf/ /var/solr/data/oai/conf/
 
-RUN chown -R solr:solr /opt/solr/server/solr/configsets/
+# Create core.properties files to tell Solr these cores exist
+RUN echo "name=search" > /var/solr/data/search/core.properties && \
+    echo "name=statistics" > /var/solr/data/statistics/core.properties && \
+    echo "name=authority" > /var/solr/data/authority/core.properties && \
+    echo "name=oai" > /var/solr/data/oai/core.properties
+
+# Ensure Solr user owns the data
+RUN chown -R solr:solr /var/solr/data
 
 USER solr
-
-# Start Solr in background and create the 4 required DSpace cores using the named configsets
-# We must wait for Solr to be fully ready before calling create_core, otherwise it will fail with "Connection Refused"
-RUN solr start -p 8983 && \
-    echo "Waiting for Solr to start..." && \
-    for i in {1..30}; do if curl -s http://localhost:8983/solr/admin/info/system > /dev/null; then break; fi; echo "Retrying... $i"; sleep 2; done && \
-    solr create_core -c search -d /opt/solr/server/solr/configsets/search && \
-    solr create_core -c statistics -d /opt/solr/server/solr/configsets/statistics && \
-    solr create_core -c authority -d /opt/solr/server/solr/configsets/authority && \
-    solr create_core -c oai -d /opt/solr/server/solr/configsets/oai && \
-    solr stop
 
 # Copy entrypoint script and make it executable
 COPY solr-entrypoint.sh /opt/solr/bin/solr-entrypoint.sh
