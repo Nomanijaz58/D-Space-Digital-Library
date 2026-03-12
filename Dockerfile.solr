@@ -26,7 +26,10 @@ RUN chown -R solr:solr /opt/solr/server/solr/configsets/
 USER solr
 
 # Start Solr in background and create the 4 required DSpace cores using the named configsets
+# We must wait for Solr to be fully ready before calling create_core, otherwise it will fail with "Connection Refused"
 RUN solr start -p 8983 && \
+    echo "Waiting for Solr to start..." && \
+    for i in {1..30}; do if curl -s http://localhost:8983/solr/admin/info/system > /dev/null; then break; fi; echo "Retrying... $i"; sleep 2; done && \
     solr create_core -c search -d /opt/solr/server/solr/configsets/search && \
     solr create_core -c statistics -d /opt/solr/server/solr/configsets/statistics && \
     solr create_core -c authority -d /opt/solr/server/solr/configsets/authority && \
