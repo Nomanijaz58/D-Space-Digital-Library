@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Solr Entrypoint for Render
-# This script handles Render's persistent disk by initializing it from templates if empty.
+# This script handles Render's persistent disk by syncing configurations from templates on every boot.
 
 PORT="${PORT:-8983}"
 DATA_DIR="/var/solr/data"
@@ -14,13 +14,17 @@ if [ ! -f "$DATA_DIR/solr.xml" ]; then
     cp /opt/solr/server/solr/solr.xml "$DATA_DIR/solr.xml"
 fi
 
-# Copy core templates if they don't exist in the data volume
+# Sync core configurations from templates to the data volume on every boot.
+# This ensures stale/failing configurations on the persistent disk are overwritten by the fixed ones from the image.
 for core in search statistics authority oai; do
-    if [ ! -d "$DATA_DIR/$core" ]; then
-        echo "Initializing core: $core"
-        mkdir -p "$DATA_DIR/$core"
-        cp -r "$TEMPLATE_DIR/$core/." "$DATA_DIR/$core/"
-    fi
+    echo "Syncing configuration for core: $core"
+    mkdir -p "$DATA_DIR/$core"
+    
+    # Clean and sync conf and lib (preserves any 'data' directory containing the index)
+    rm -rf "$DATA_DIR/$core/conf" "$DATA_DIR/$core/lib"
+    cp -r "$TEMPLATE_DIR/$core/conf" "$DATA_DIR/$core/"
+    cp -r "$TEMPLATE_DIR/$core/lib" "$DATA_DIR/$core/"
+    cp "$TEMPLATE_DIR/$core/core.properties" "$DATA_DIR/$core/"
 done
 
 # Ensure permissions are correct on the volume
