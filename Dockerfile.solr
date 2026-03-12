@@ -9,7 +9,11 @@ USER root
 # Install curl for troubleshooting
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Pre-create Solr core directories and lib folders
+# DSpace solrconfig.xml hardcodes looking in /opt/solr/modules/analysis-extras/lib/
+# We create this path and populate it to satisfy the <lib> tags.
+RUN mkdir -p /opt/solr/modules/analysis-extras/lib/
+
+# Pre-create Solr core directories and core-specific lib folders for redundancy
 RUN mkdir -p /var/solr/data/search/conf /var/solr/data/search/lib \
              /var/solr/data/statistics/conf /var/solr/data/statistics/lib \
              /var/solr/data/authority/conf /var/solr/data/authority/lib \
@@ -21,17 +25,16 @@ COPY dspace/solr/statistics/conf/ /var/solr/data/statistics/conf/
 COPY dspace/solr/authority/conf/ /var/solr/data/authority/conf/
 COPY dspace/solr/oai/conf/ /var/solr/data/oai/conf/
 
-# The DSpace schema requires ICU analysis plugins (e.g. ICUFoldingFilterFactory).
-# These are in /opt/solr/contrib/analysis-extras/lib/ in the base image.
-# We copy them into each core's lib directory so they are loaded on startup.
-RUN find /opt/solr/contrib/analysis-extras/lib/ -name "lucene-analyzers-icu-*.jar" -exec cp {} /var/solr/data/search/lib/ \; && \
-    find /opt/solr/contrib/analysis-extras/lib/ -name "lucene-analyzers-icu-*.jar" -exec cp {} /var/solr/data/statistics/lib/ \; && \
-    find /opt/solr/contrib/analysis-extras/lib/ -name "lucene-analyzers-icu-*.jar" -exec cp {} /var/solr/data/authority/lib/ \; && \
-    find /opt/solr/contrib/analysis-extras/lib/ -name "lucene-analyzers-icu-*.jar" -exec cp {} /var/solr/data/oai/lib/ \; && \
-    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /var/solr/data/search/lib/ \; && \
-    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /var/solr/data/statistics/lib/ \; && \
-    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /var/solr/data/authority/lib/ \; && \
-    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /var/solr/data/oai/lib/ \;
+# Collect all ICU and analysis-extras jars into the path expected by solrconfig.xml
+# Search in contrib/analysis-extras/lib (for lucene-icu and icu4j) and dist/ (for solr-analysis-extras)
+RUN find /opt/solr/contrib/analysis-extras/lib/ -name "*.jar" -exec cp {} /opt/solr/modules/analysis-extras/lib/ \; && \
+    find /opt/solr/dist/ -name "solr-analysis-extras-*.jar" -exec cp {} /opt/solr/modules/analysis-extras/lib/ \;
+
+# Also copy them into each core's lib directory just in case
+RUN cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/search/lib/ && \
+    cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/statistics/lib/ && \
+    cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/authority/lib/ && \
+    cp /opt/solr/modules/analysis-extras/lib/*.jar /var/solr/data/oai/lib/
 
 # Create core.properties files to tell Solr these cores exist
 RUN echo "name=search" > /var/solr/data/search/core.properties && \
@@ -39,8 +42,9 @@ RUN echo "name=search" > /var/solr/data/search/core.properties && \
     echo "name=authority" > /var/solr/data/authority/core.properties && \
     echo "name=oai" > /var/solr/data/oai/core.properties
 
-# Ensure Solr user owns all data
-RUN chown -R solr:solr /var/solr/data
+# Ensure Solr user owns all data and modules
+RUN chown -R solr:solr /var/solr/data && \
+    chown -R solr:solr /opt/solr/modules
 
 USER solr
 
