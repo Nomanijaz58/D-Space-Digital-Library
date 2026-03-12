@@ -104,19 +104,9 @@ DSPACE_OPTS="$DSPACE_OPTS -Dproxies.trusted.ipranges=* -Dserver.forward-headers-
 
 export DSPACE_OPTS
 
-echo "Creating mock health check endpoint for Render proxy server..."
-mkdir -p /tmp/server/api/system
-echo '{"status":"UP"}' > /tmp/server/api/system/status
-
-echo "Starting dummy web server on Render PORT to satisfy the port scanner..."
-# We use a timeout to ensure the dummy server doesn't stay alive forever if migration hangs
-jwebserver -p "${PORT:-8080}" -b 0.0.0.0 -d /tmp &
-JWEB_PID=$!
-
+# Run DSpace database migration (MUST succeed)...
 echo "Running DSpace database migration (MUST succeed)..."
-# Add -v for verbose output if needed, but the main goal is to see it finish
-/dspace/bin/dspace database migrate || { echo "ERROR: Database migration failed. See logs above."; kill $JWEB_PID || true; exit 1; }
-
+/dspace/bin/dspace database migrate || { echo "ERROR: Database migration failed. See logs above."; exit 1; }
 echo "Database migration finished."
 
 # Auto-create admin if DSPACE_ADMIN_EMAIL is set
@@ -130,10 +120,6 @@ if [ ! -z "$DSPACE_ADMIN_EMAIL" ] && [ ! -z "$DSPACE_ADMIN_PASSWORD" ]; then
         -p "$DSPACE_ADMIN_PASSWORD" && echo "Admin user created successfully!" || echo "Admin user may already exist, continuing..."
 fi
 
-echo "Force-killing dummy web server to release port..."
-kill -9 $JWEB_PID || true
-pkill -9 -f jwebserver || true
-sleep 2
 
 echo "Starting Spring Boot..."
 export PORT="${PORT:-8080}"
