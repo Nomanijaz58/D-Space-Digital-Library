@@ -9,18 +9,28 @@ USER root
 # Install python3 for the health check dummy server in solr-entrypoint.sh
 RUN apt-get update && apt-get install -y python3 curl && rm -rf /var/lib/apt/lists/*
 
-# Copy DSpace Solr configurations
-COPY dspace/solr /opt/solr/server/solr/configsets/dspace
-RUN chown -R solr:solr /opt/solr/server/solr/configsets/dspace
+# Copy DSpace Solr configurations into named configsets
+# We create a configset directory for each core
+RUN mkdir -p /opt/solr/server/solr/configsets/search/conf \
+             /opt/solr/server/solr/configsets/statistics/conf \
+             /opt/solr/server/solr/configsets/authority/conf \
+             /opt/solr/server/solr/configsets/oai/conf
+
+COPY dspace/solr/search/conf/ /opt/solr/server/solr/configsets/search/conf/
+COPY dspace/solr/statistics/conf/ /opt/solr/server/solr/configsets/statistics/conf/
+COPY dspace/solr/authority/conf/ /opt/solr/server/solr/configsets/authority/conf/
+COPY dspace/solr/oai/conf/ /opt/solr/server/solr/configsets/oai/conf/
+
+RUN chown -R solr:solr /opt/solr/server/solr/configsets/
 
 USER solr
 
-# Start Solr in background and create the 4 required DSpace cores with correct schemas
+# Start Solr in background and create the 4 required DSpace cores using the named configsets
 RUN solr start -p 8983 && \
-    solr create_core -c search -d /opt/solr/server/solr/configsets/dspace/search && \
-    solr create_core -c statistics -d /opt/solr/server/solr/configsets/dspace/statistics && \
-    solr create_core -c authority -d /opt/solr/server/solr/configsets/dspace/authority && \
-    solr create_core -c oai -d /opt/solr/server/solr/configsets/dspace/oai && \
+    solr create_core -c search -d /opt/solr/server/solr/configsets/search && \
+    solr create_core -c statistics -d /opt/solr/server/solr/configsets/statistics && \
+    solr create_core -c authority -d /opt/solr/server/solr/configsets/authority && \
+    solr create_core -c oai -d /opt/solr/server/solr/configsets/oai && \
     solr stop
 
 # Copy entrypoint script and make it executable
