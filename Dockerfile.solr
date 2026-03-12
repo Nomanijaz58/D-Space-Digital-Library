@@ -6,8 +6,8 @@ ENV PORT=8983
 ENV SOLR_PORT=8983
 
 USER root
-# Install python3 for the health check dummy server and curl for troubleshooting
-RUN apt-get update && apt-get install -y python3 curl && rm -rf /var/lib/apt/lists/*
+# Install curl for troubleshooting (python3 no longer needed for dummy server)
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Pre-create Solr core directories in the standard data path
 RUN mkdir -p /var/solr/data/search/conf \
