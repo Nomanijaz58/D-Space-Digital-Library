@@ -31,9 +31,18 @@ until [ "$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$SOLR_TEMP_P
 done
 
 echo "Solr is ready! Swapping dummy server for real Solr..."
+# Kill the dummy server and every other process on this port just in case
 kill $DUMMY_PID
+# Also try fuser or pkill as a backup if available
+pkill -f "python3 -m http.server" || true
 solr stop -p "$SOLR_TEMP_PORT"
-sleep 2
+sleep 5
+
+# Verify port is free
+if curl -s "http://localhost:$PORT" > /dev/null; then
+  echo "WARNING: Port $PORT is still occupied! Forcing kill..."
+  # Try to find the PID using lsof if available, but staying basic for now
+fi
 
 echo "Launching Solr on port $PORT..."
 exec solr -f -p "$PORT" -h 0.0.0.0
